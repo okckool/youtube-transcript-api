@@ -31,13 +31,17 @@ def get_transcript():
         
         try:
             transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            
+            # 1. On cherche d'abord le français ou l'anglais
             try:
                 transcript = transcript_list.find_transcript(['fr', 'en'])
             except:
-                transcript = transcript_list.find_generated_transcript(['fr', 'en'])
+                # 2. Sinon, on prend n'importe quelle transcription disponible (générée ou non)
+                transcript = next(iter(transcript_list))
             
-            transcript_data = transcript.fetch()
-            full_text = ' '.join([item['text'] for item in transcript_data])
+            # 3. Si ce n'est pas du français, on demande à YouTube de traduire automatiquement en FR
+            if transcript.language_code != 'fr':
+                transcript = transcript.translate('fr')
             
             return jsonify({
                 'success': True,
