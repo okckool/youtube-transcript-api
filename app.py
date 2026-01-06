@@ -1,22 +1,9 @@
 from flask import Flask, request, jsonify
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
-from youtube_transcript_api._settings import REQUESTS_SESSION
 import re
-import requests
 
 app = Flask(__name__)
-
-# 🔧 CONFIGURATION ANTI-BLOCAGE YOUTUBE
-# Créer une session avec un User-Agent custom
-session = requests.Session()
-session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7'
-})
-
-# Injecter la session personnalisée dans youtube_transcript_api
-REQUESTS_SESSION.headers.update(session.headers)
 
 def extract_video_id(url):
     patterns = [
@@ -43,7 +30,12 @@ def get_transcript():
             return jsonify({'error': 'URL YouTube invalide'}), 400
         
         try:
-            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            # 🔧 MÉTHODE ALTERNATIVE : Utiliser les proxies et cookies
+            transcript_list = YouTubeTranscriptApi.list_transcripts(
+                video_id,
+                proxies=None,
+                cookies=None
+            )
             
             # 1. Cherche français ou anglais
             try:
@@ -64,7 +56,7 @@ def get_transcript():
                 'video_id': video_id,
                 'transcript': full_text,
                 'language': transcript.language_code
-            })
+            }), 200
             
         except TranscriptsDisabled:
             return jsonify({
@@ -87,7 +79,10 @@ def get_transcript():
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok', 'version': '1.1.0'})
+    return jsonify({
+        'status': 'ok',
+        'version': '1.2.0'
+    }), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
